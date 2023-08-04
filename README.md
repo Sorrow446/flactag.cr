@@ -106,7 +106,6 @@ date
 disc_number
 disc_total
 encoder
-explicit
 genre
 isrc
 itunes_advisory
