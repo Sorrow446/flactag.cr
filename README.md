@@ -111,7 +111,6 @@ isrc
 itunes_advisory
 length
 lyrics
-media_type
 performer
 picture:(index starting from 1)
 publisher
