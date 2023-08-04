@@ -120,7 +120,7 @@ module FLACTag
         when 0x6
           parse_pic_block(tags)      
         else
-          skip()
+          skip
         end
         last = 1 & (b >> 7) == 1
         if last
@@ -272,7 +272,7 @@ module FLACTag
           ex.title = ""
         end
         if "upc".in?(del_strings)
-          ex.title = ""
+          ex.upc = ""
         end
         if "vendor".in?(del_strings)
           ex.vendor = ""
