@@ -167,6 +167,18 @@ class FLACTags
   property year : Int32 = 0
 end
 
+class FLACStreamInfo
+  property block_size_min : Int16
+  property block_size_max : Int16
+  property frame_size_min : Int32
+  property frame_size_max : Int32
+  property sample_rate    : Int32
+  property channel_count  : Int8
+  property bit_depth      : Int8
+  property sample_count   : Int64
+  property audio_md5      : Bytes
+end
+
 enum PictureType : Int32
   Other
   Icon
