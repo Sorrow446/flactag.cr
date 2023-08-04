@@ -301,7 +301,7 @@ module FLACTag
       ex.encoder = to_write.encoder if !to_write.encoder.empty?
       ex.genre = to_write.genre if !to_write.genre.empty?
       ex.isrc = to_write.isrc if !to_write.isrc.empty?
-      ex.upc = to_write.upc if !to_write.isrc.empty?
+      ex.upc = to_write.upc if !to_write.upc.empty?
       ex.lyrics = to_write.lyrics if !to_write.lyrics.empty?
       ex.performer = to_write.performer if !to_write.performer.empty?
       ex.title = to_write.title if !to_write.title.empty?
@@ -488,8 +488,13 @@ module FLACTag
           com_count += 1
         end
 
-        if !tags.isrc.empty?
+        if !tags.lyrics.empty?
           written += write_com(f, "lyrics", tags.lyrics)
+          com_count += 1
+        end
+
+        if !tags.upc.empty?
+          written += write_com(f, "upc", tags.upc)
           com_count += 1
         end
 
