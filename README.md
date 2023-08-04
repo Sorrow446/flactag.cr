@@ -84,7 +84,7 @@ flac.write(tags, [] of String)
 Delete all tags and the second picture:
 ```crystal
 tags = FLACTag::FLACTags.new
-flac.write(tags, ["all_tags", "picture:2"]
+flac.write(tags, ["all_tags", "picture:2"])
 ```
 
 Read bit-depth and sample rate:
