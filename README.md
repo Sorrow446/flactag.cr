@@ -16,7 +16,7 @@ require "flactag"
 Opening and exception handling are omitted from the examples.
 ```crystal
 FLACTag.open("1.flac") do |flac|
-  # stuff
+  # Stuff.
 end
 ```
 
@@ -40,6 +40,13 @@ tags = FLACTag::FLACTags.new
 tags.title = "my title"
 tags.year = 2023
 flac.write(tags, [] of String)
+```
+
+You can also set tags via its update function instead of dot notation (underscores are removed). 
+```crystal
+tags = FLACTag::FLACTags.new
+tags.update("track_number", 10)
+tags.update("mycustomtag", "val")
 ```
 
 Write two covers, retaining any already written:
@@ -68,7 +75,7 @@ pic_two.width = 1000
 pic_two.mime_type = "image/jpeg"
 pic_two.type = FLACTag::PictureType::BackCover
 
-# or tags.pictures.push(pic)
+# Or tags.pictures.push(pic).
 tags.add_picture(pic)
 tags.add_picture(pic_two)
 flac.write(tags, [] of String)
@@ -79,3 +86,111 @@ Delete all tags and the second picture:
 tags = FLACTag::FLACTags.new
 flac.write(tags, ["all_tags", "picture:2"]
 ```
+
+Read bit-depth and sample rate:
+```crystal
+si = flac.read_stream_info
+puts("#{si.bit_depth}-bit / #{si.sample_rate} Hz")
+```
+
+## Deletion strings
+```
+album
+album_artist
+all_pictures
+all_tags
+artist
+comment
+compilation
+date
+disc_number
+disc_total
+encoder
+explicit
+genre
+isrc
+itunes_advisory
+length
+lyrics
+media_type
+performer
+picture:(index starting from 1)
+publisher
+title
+track_number
+track_total
+upc
+vendor
+year
+```
+Case-insensitive. Any others will be assumed to be custom tags.
+
+## Objects
+```crystal
+class FLACPicture
+  property colours_num : Int32 = 0
+  property depth : Int32 = 0
+  property description : String = ""
+  property height : Int32 = 0
+  property mime_type : String = ""
+  property type : PictureType = PictureType::FrontCover
+  property width : Int32 = 0
+  property data : Bytes = Bytes.new(0)
+end
+
+class FLACTags
+  property pictures : Array(FLACPicture)
+  property album : String = ""
+  property album_artist : String = ""
+  property artist : String = ""
+  property bpm : Int32?
+  property comment : String = ""
+  property compilation : Int32?
+  property copyright : String = ""
+  property custom : Hash(String, String)
+  property date : String = ""
+  property disc_number : Int32 = 0
+  property disc_total : Int32 = 0
+  property encoder : String = ""
+  property length : Int32 = 0
+  property genre : String = ""
+  property isrc : String = ""
+  property itunes_advisory : Int32?
+  property lyrics : String = ""
+  property performer : String = ""
+  property publisher : String = ""
+  property title : String = ""
+  property track_number : Int32 = 0
+  property track_total : Int32 = 0
+  property upc : String = ""
+  property vendor : String = ""
+  property year : Int32 = 0
+end
+
+enum PictureType : Int32
+  Other
+  Icon
+  OtherIcon
+  FrontCover
+  BackCover
+  Leaflet
+  Media
+  LeadArtist
+  Artist
+  Conductor
+  Band
+  Composer
+  Lyricist
+  RecordingLocation
+  DuringRecording
+  DuringPerformance
+  VideoCapture
+  Illustration
+  BandLogotype
+  PublisherLogotype
+end
+```
+
+## Thank you
+- flactag.cr's bit reader was ported from mewkiz's Go FLAC library.
+- Crystal Discord community for their assistance with any language problems.
