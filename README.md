@@ -76,7 +76,7 @@ pic_two.type = FLACTag::PictureType::BackCover
 # Or tags.pictures.push(pic).
 tags.add_picture(pic)
 tags.add_picture(pic_two)
-flac.write(tags, [] of String)
+flac.write(tags)
 ```
 
 Delete all tags and the second picture:
