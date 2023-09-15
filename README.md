@@ -166,6 +166,7 @@ class FLACTags
     property upc : String = ""
     property vendor : String = ""
     property year : Int32 = 0
+end
 
 class FLACStreamInfo
   property block_size_min : Int16
