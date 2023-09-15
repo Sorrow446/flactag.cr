@@ -39,7 +39,7 @@ Write album title and year:
 tags = FLACTag::FLACTags.new
 tags.title = "my title"
 tags.year = 2023
-flac.write(tags, [] of String)
+flac.write(tags)
 ```
 
 You can also set tags via its update function instead of dot notation (underscores are removed). 
@@ -52,11 +52,9 @@ tags.update("mycustomtag", "val")
 Write two covers, retaining any already written:
 ```crystal
 def read_pic_data(pic_path : String) : Bytes
-  data = Bytes.new(0)
   File.open(pic_path, "rb") do |f|
-    data = f.getb_to_end
+    f.getb_to_end
   end
-  return data
 end
 
 tags = FLACTag::FLACTags.new
@@ -125,6 +123,11 @@ Case-insensitive. Any others will be assumed to be custom tags.
 
 ## Objects
 ```crystal
+enum ITUNESADVISORY : UInt32
+  Explicit = 1
+  Clean
+end
+
 class FLACPicture
   property colours_num : Int32 = 0
   property depth : Int32 = 0
@@ -137,33 +140,32 @@ class FLACPicture
 end
 
 class FLACTags
-  property pictures : Array(FLACPicture)
-  property album : String = ""
-  property album_artist : String = ""
-  property artist : String = ""
-  property bpm : Int32?
-  property comment : String = ""
-  property compilation : Int32?
-  property copyright : String = ""
-  property custom : Hash(String, String)
-  property date : String = ""
-  property disc_number : Int32 = 0
-  property disc_total : Int32 = 0
-  property encoder : String = ""
-  property length : Int32 = 0
-  property genre : String = ""
-  property isrc : String = ""
-  property itunes_advisory : Int32?
-  property lyrics : String = ""
-  property performer : String = ""
-  property publisher : String = ""
-  property title : String = ""
-  property track_number : Int32 = 0
-  property track_total : Int32 = 0
-  property upc : String = ""
-  property vendor : String = ""
-  property year : Int32 = 0
-end
+    property pictures : Array(FLACPicture)
+    property album : String = ""
+    property album_artist : String = ""
+    property artist : String = ""
+    property bpm : Int32 = 0
+    property comment : String = ""
+    property compilation : Bool?
+    property copyright : String = ""
+    property custom : Hash(String, String)
+    property date : String = ""
+    property disc_number : Int32 = 0
+    property disc_total : Int32 = 0
+    property encoder : String = ""
+    property length : Int32 = 0
+    property genre : String = ""
+    property isrc : String = ""
+    property itunes_advisory : ITUNESADVISORY?
+    property lyrics : String = ""
+    property performer : String = ""
+    property publisher : String = ""
+    property title : String = ""
+    property track_number : Int32 = 0
+    property track_total : Int32 = 0
+    property upc : String = ""
+    property vendor : String = ""
+    property year : Int32 = 0
 
 class FLACStreamInfo
   property block_size_min : Int16
