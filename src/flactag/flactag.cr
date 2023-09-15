@@ -3,20 +3,20 @@ require "../bitreader/*"
 
 module FLACTag
   class FLAC
-    property f : IO
+    private property io : IO
 
-    def close() : Nil
-      @f.close
+    protected def close : Nil
+      @io.close
     end
 
-    private def check_header() : Nil
-      magic = @f.read_string(4)
+    private def check_header : Nil
+      magic = @io.read_string(4)
       if magic != "fLaC"
         raise(
           InvalidMagicException.new("file header is corrupted or not a flac file")
         )
       end
-      byte = @f.read_byte()
+      byte = @io.read_byte
       block_type = byte.try { |t| t & 0x7F }
       if block_type != 0x0
         raise(
@@ -26,11 +26,11 @@ module FLACTag
     end
 
     def initialize(flac_path : String)
-      @f = File.open(flac_path, "rb")
+      @io = File.open(flac_path, "rb")
       begin
         check_header()
       rescue ex
-        @f.close
+        @io.close
         raise(ex)
       end
       @flac_path = flac_path
@@ -45,24 +45,24 @@ module FLACTag
     end
 
     private def read_le_u32() : UInt32
-      @f.read_bytes(UInt32, IO::ByteFormat::LittleEndian)
+      @io.read_bytes(UInt32, IO::ByteFormat::LittleEndian)
     end
 
     private def read_be_u32() : UInt32
-      @f.read_bytes(UInt32, IO::ByteFormat::BigEndian)
+      @io.read_bytes(UInt32, IO::ByteFormat::BigEndian)
     end
 
     private def parse_vorb_block(tags : FLACTags) : Nil
-      @f.seek(3, IO::Seek::Current)
+      @io.seek(3, IO::Seek::Current)
       vendor_len = read_le_u32()
       if vendor_len > 0
-        vendor = @f.read_string(vendor_len)
+        vendor = @io.read_string(vendor_len)
         tags.vendor = vendor
       end
       com_count = read_le_u32()
       (0...com_count).each do
         com_len = read_le_u32()
-        com = @f.read_string(com_len)
+        com = @io.read_string(com_len)
         com_split = com.split("=", 2)
         if com_split.size < 2
           raise InvalidVorbisCommentException.new("vorbis comment must have at least one '='")
@@ -75,13 +75,13 @@ module FLACTag
 
     private def parse_pic_block(tags : FLACTags) : Nil
       cover = FLACPicture.new
-      @f.seek(3, IO::Seek::Current)
+      @io.seek(3, IO::Seek::Current)
       pic_type = read_be_u32()
       mime_len = read_be_u32()
-      mime_type = @f.read_string(mime_len)
+      mime_type = @io.read_string(mime_len)
       desc_len = read_be_u32()
       if desc_len > 0
-        description = @f.read_string(desc_len)
+        description = @io.read_string(desc_len)
         cover.description = description
       end
       width = read_be_u32()
@@ -90,7 +90,7 @@ module FLACTag
       colours_num = read_be_u32()
       data_len = read_be_u32()
       cover_buf = Bytes.new(data_len)
-      @f.read_fully(cover_buf)
+      @io.read_fully(cover_buf)
       
       cover.data = cover_buf
       cover.colours_num = colours_num.to_i32
@@ -102,17 +102,17 @@ module FLACTag
       tags.pictures.push(cover)
     end
 
-    private def skip() : Nil
+    private def skip : Nil
       buf = Bytes.new(3)
-      @f.read_fully(buf)
+      @io.read_fully(buf)
       size = to_be_u24(buf)
-      @f.seek(size, IO::Seek::Current)
+      @io.seek(size, IO::Seek::Current)
     end
 
-    def read() : FLACTags
+    def read : FLACTags
       tags = FLACTags.new
-      @f.seek(4, IO::Seek::Set)
-      while b = f.read_byte()
+      @io.seek(4, IO::Seek::Set)
+      while b = @io.read_byte()
         block_type = b.try { |t| t & 0x7F }
         case block_type
         when 0x4
@@ -130,9 +130,9 @@ module FLACTag
       return tags
     end
 
-    def read_stream_info() : FLACStreamInfo
-      @f.seek(8, IO::Seek::Set)
-      br = BitReader::BitReader.new(@f)
+    def read_stream_info : FLACStreamInfo
+      @io.seek(8, IO::Seek::Set)
+      br = BitReader::BitReader.new(@io)
       block_size_min = br.read(16)
       block_size_max = br.read(16)
       frame_size_min = br.read(24)
@@ -142,7 +142,7 @@ module FLACTag
       bit_depth = br.read(5)
       sample_count = br.read(36)
       audio_md5_buf = Bytes.new(16)
-      @f.read_fully(audio_md5_buf)
+      @io.read_fully(audio_md5_buf)
       FLACStreamInfo.new(
         block_size_min: block_size_min.to_i16,
         block_size_max: block_size_max.to_i16,
@@ -168,7 +168,7 @@ module FLACTag
       property pic_blocks    : Array(Block)
       property other_blocks  : Array(Block)
 
-      def initialize()
+      def initialize
         @stream_blocks = Array(Block).new
         @pic_blocks = Array(Block).new
         @other_blocks = Array(Block).new
@@ -183,18 +183,17 @@ module FLACTag
       return out_buf
     end
 
-    private def read_block() : Bytes
+    private def read_block : Bytes
       size_buf = Bytes.new(3)
-      @f.read(size_buf)
+      @io.read(size_buf)
       size = to_be_u24(size_buf)
-      @f.seek(-3, IO::Seek::Current)
+      @io.seek(-3, IO::Seek::Current)
       data_buf = Bytes.new(size+3)
-      @f.read_fully(data_buf)
+      @io.read_fully(data_buf)
       return data_buf
     end
 
-    private def get_temp_path() : String
-      #fname = File.basename(@f.path)
+    private def get_temp_path : String
       fname = File.basename(@flac_path)
       unix = Time.local.to_unix_ns
       File.join(Dir.tempdir, "#{fname}_tmp_#{unix}")
@@ -207,83 +206,90 @@ module FLACTag
         ex = FLACTags.new
         ex.pictures = ex_pics
         ex.vendor = ex_vendor
-      else
-        if "album".in?(del_strings)
-          ex.album = ""
-        end
-        if "album_artist".in?(del_strings)
-          ex.album_artist = ""
-        end
-        if "artist".in?(del_strings)
-          ex.artist = ""
-        end
-        if "bpm".in?(del_strings)
-          ex.bpm = 0
-        end
-        if "comment".in?(del_strings)
-          ex.comment = ""
-        end
-        if "compilation".in?(del_strings)
-          ex.compilation = nil
-        end
-        if "copyright".in?(del_strings)
-          ex.copyright = ""
-        end
-        if "date".in?(del_strings)
-          ex.date = ""
-        end
-        if "track_number".in?(del_strings) || "track".in?(del_strings)
-          ex.track_number = 0
-        end
-        if "track_total".in?(del_strings) || "total_tracks".in?(del_strings)
-          ex.track_total = 0
-        end        
-        if "disk_number".in?(del_strings) || "disc_number".in?(del_strings)
-          ex.disc_number = 0
-        end
-        if "disk_total".in?(del_strings) || "disc_total".in?(del_strings)
-          ex.disc_total = 0
-        end
-        if "encoder".in?(del_strings)
-          ex.encoder = ""
-        end
-        if "length".in?(del_strings)
-          ex.length = 0
-        end
-        if "genre".in?(del_strings)
-          ex.genre = ""
-        end
-        if "isrc".in?(del_strings)
-          ex.isrc = ""
-        end
-        if "itunes_advisory".in?(del_strings)
-          ex.itunes_advisory = nil
-        end
-        if "lyrics".in?(del_strings)
-          ex.lyrics = ""
-        end
-        if "performer".in?(del_strings)
-          ex.performer = ""
-        end
-        if "publisher".in?(del_strings)
-          ex.publisher = ""
-        end
-        if "title".in?(del_strings)
-          ex.title = ""
-        end
-        if "upc".in?(del_strings)
-          ex.upc = ""
-        end
-        if "vendor".in?(del_strings)
-          ex.vendor = ""
-        end
-        if "year".in?(del_strings)
-          ex.year = 0
-        end
-        ex.custom.keys.each do |k|
-          if k.downcase.in?(del_strings)
-            ex.custom.delete(k)
-          end
+      elsif "all_custom".in?(del_strings)
+        ex.custom = Hash(String, String).new
+      end
+
+      if "album".in?(del_strings)
+        ex.album = ""
+      end
+      if "album_artist".in?(del_strings)
+        ex.album_artist = ""
+      end
+      if "artist".in?(del_strings)
+        ex.artist = ""
+      end
+      if "bpm".in?(del_strings)
+        ex.bpm = 0
+      end
+      if "comment".in?(del_strings)
+        ex.comment = ""
+      end
+      if "compilation".in?(del_strings)
+        ex.compilation = nil
+      end
+      if "copyright".in?(del_strings)
+        ex.copyright = ""
+      end
+      if "date".in?(del_strings)
+        ex.date = ""
+      end
+
+      if ["track_number", "track"].any?(&.in?(del_strings))
+        ex.track_number = 0
+      end
+
+      if ["track_total", "total_tracks"].any?(&.in?(del_strings))
+        ex.track_total = 0
+      end
+
+      if ["disc_number", "disk_number"].any?(&.in?(del_strings))
+        ex.disc_number = 0
+      end
+
+      if ["disc_total", "disk_total"].any?(&.in?(del_strings))
+        ex.disc_total = 0
+      end
+
+      if "encoder".in?(del_strings)
+        ex.encoder = ""
+      end
+      if "length".in?(del_strings)
+        ex.length = 0
+      end
+      if "genre".in?(del_strings)
+        ex.genre = ""
+      end
+      if "isrc".in?(del_strings)
+        ex.isrc = ""
+      end
+      if "itunes_advisory".in?(del_strings)
+        ex.itunes_advisory = nil
+      end
+      if "lyrics".in?(del_strings)
+        ex.lyrics = ""
+      end
+      if "performer".in?(del_strings)
+        ex.performer = ""
+      end
+      if "publisher".in?(del_strings)
+        ex.publisher = ""
+      end
+      if "title".in?(del_strings)
+        ex.title = ""
+      end
+      if "upc".in?(del_strings)
+        ex.upc = ""
+      end
+      if "vendor".in?(del_strings)
+        ex.vendor = ""
+      end
+      if "year".in?(del_strings)
+        ex.year = 0
+      end
+      ex.custom.keys.each do |k|
+        if k.downcase.in?(del_strings)
+          ex.custom.delete(k)
         end
       end
 
@@ -315,7 +321,11 @@ module FLACTag
       ex.year = to_write.year if to_write.year > 0
       to_write.compilation.try { |comp| ex.compilation = comp }
       to_write.bpm.try { |bpm| ex.bpm = bpm }
-      to_write.itunes_advisory.try { |advisory| ex.itunes_advisory = advisory }
+      to_write.itunes_advisory.try { |advisory|
+        if ITUNESADVISORY.valid?(ITUNESADVISORY.new(advisory.value))
+          ex.itunes_advisory = advisory
+        end
+      }
 
       to_write.custom.each do |k, v|
         if v.empty?
@@ -340,78 +350,78 @@ module FLACTag
       return ex
     end
 
-    private def write_com(f : IO, field_name : String, field_val : _) : Int32
+    private def write_com(io : IO, field_name : String, field_val : _) : Int32
       buf = Bytes.new(4)
       pair = field_name.upcase + "=" + field_val.to_s
       pair_size = pair.size
       IO::ByteFormat::LittleEndian.encode(pair_size, buf)
-      f.write(buf)
-      f.print(pair)
+      io.write(buf)
+      io.print(pair)
       return pair_size + 4
     end
 
-    private def write_pic_block(f : IO, cover : FLACPicture) : Nil
+    private def write_pic_block(io : IO, cover : FLACPicture) : Nil
       written = 0
       buf = Bytes.new(4)
       pic_data_size = cover.data.size
       cover_desc_size = cover.description.size
       mime_type_size = cover.mime_type.size
-      f.write_byte(0x06)
-      block_size_p = f.tell
-      f.write(Slice.new(3, 0x0_u8))
+      io.write_byte(0x06)
+      block_size_p = io.tell
+      io.write(Slice.new(3, 0x0_u8))
 
       IO::ByteFormat::BigEndian.encode(cover.type.value, buf)
-      f.write(buf)
+      io.write(buf)
       IO::ByteFormat::BigEndian.encode(cover.mime_type.size, buf)
-      f.write(buf)
-      f.print(cover.mime_type)
+      io.write(buf)
+      io.print(cover.mime_type)
       IO::ByteFormat::BigEndian.encode(cover_desc_size, buf)
-      f.write(buf)
+      io.write(buf)
 
       written += mime_type_size + 12
 
       if cover_desc_size > 0
-        f.print(cover.description)
+        io.print(cover.description)
         written += cover_desc_size
       end
 
       IO::ByteFormat::BigEndian.encode(cover.width, buf)
-      f.write(buf)     
+      io.write(buf)     
       IO::ByteFormat::BigEndian.encode(cover.height, buf)
-      f.write(buf)
+      io.write(buf)
       IO::ByteFormat::BigEndian.encode(cover.depth, buf)
-      f.write(buf)
+      io.write(buf)
       IO::ByteFormat::BigEndian.encode(cover.colours_num, buf)
-      f.write(buf)
+      io.write(buf)
       IO::ByteFormat::BigEndian.encode(pic_data_size, buf)
-      f.write(buf)
+      io.write(buf)
 
       written += 20
 
-      f.write(cover.data)
+      io.write(cover.data)
       written += pic_data_size
-      end_block_p = f.tell
-      f.seek(block_size_p, IO::Seek::Set)
+      end_block_p = io.pos
+      io.seek(block_size_p, IO::Seek::Set)
       IO::ByteFormat::BigEndian.encode(written, buf)
       written_24 = to_24(buf)
-      f.write(written_24)
-      f.seek(end_block_p, IO::Seek::Set)
+      io.write(written_24)
+      io.seek(end_block_p, IO::Seek::Set)
       # return written
     end
 
-    private def write_end(f : IO) : Nil
+    private def write_end(io : IO) : Nil
       # 4 MB
       buf_size = 4096*1024
       buf = Bytes.new(buf_size)
       loop do
-        pos = @f.tell
-        read = @f.read(buf)
+        pos = @io.pos
+        read = @io.read(buf)
         if read < 1
           break
         elsif read < buf_size
-          f.write(buf[...read])
+          io.write(buf[...read])
         else
-          f.write(buf)
+          io.write(buf)
         end      
       end
     end
@@ -419,8 +429,8 @@ module FLACTag
     private def create(parsed_blocks : Blocks, to_write : FLACTags, temp_path : String, del_strings : Array(String)) : Nil
       written = 0
       com_count = 0
-      end_data_start = @f.tell
-      # @f.seek(4, IO::Seek::Set)
+      end_data_start = @io.pos
+      # @io.seek(4, IO::Seek::Set)
       tags = read
       tags = overwrite_tags(tags, to_write, del_strings)
 
@@ -429,7 +439,7 @@ module FLACTag
         f.write_byte(0x0)
         f.write(parsed_blocks.stream_blocks[0].data)
         f.write_byte(0x4)
-        p = f.tell
+        p = f.pos
         f.write(Slice.new(3, 0x0_u8))
 
         vendor_size = tags.vendor.size
@@ -534,30 +544,22 @@ module FLACTag
         end
 
         tags.itunes_advisory.try { |advisory|
-          if advisory > -1
-            written += write_com(f, "itunesadvisory", advisory)
-            com_count += 1
-          end
+          written += write_com(f, "itunesadvisory", advisory.value)
+          com_count += 1
         }
 
-        tags.bpm.try { |bpm|
-          if bpm > 0
-            written += write_com(f, "bpm", bpm)
-            com_count += 1
-          end
-        }
+        if bpm > 0
+          written += write_com(f, "bpm", bpm)
+          com_count += 1
+        end
 
-        tags.compilation.try { |comp|
-          if comp > 0
-            written += write_com(f, "compilation", comp)
-            com_count += 1
-          end
-        }      
+        to_write.compilation.try { |comp|
+          written += write_com(f, "compilation", 1)
+          com_count += 1
+        }  
 
         tags.custom.each do |k, v|
-          if v.empty?
-            next
-          end
+          next if v.empty?
           written += write_com(f, k, v)
           com_count += 1
         end
@@ -571,7 +573,7 @@ module FLACTag
           f.write(b.data)
         end
 
-        @f.seek(end_data_start, IO::Seek::Set)
+        @io.seek(end_data_start, IO::Seek::Set)
         write_end(f)
         f.seek(com_count_p, IO::Seek::Set)
         IO::ByteFormat::LittleEndian.encode(com_count, buf)
@@ -583,12 +585,12 @@ module FLACTag
       end
     end
 
-    def write(to_write : FLACTags, _del_strings : Array(String)) : Nil
-      @f.seek(4, IO::Seek::Set)
-      del_strings = _del_strings.map &.downcase
+    def write(to_write : FLACTags, del_strings = Array(String).new) : Nil
+      del_strings.map!(&.downcase)
+      @io.seek(4, IO::Seek::Set)
       parsed_blocks = Blocks.new
       
-      while b = f.read_byte
+      while b = @io.read_byte
         block_type = b.try { |t| t & 0x7F }
         block_data = read_block
         block = Block.new(type: b, data: block_data)
@@ -609,13 +611,12 @@ module FLACTag
 
       temp_path = get_temp_path
       create(parsed_blocks, to_write, temp_path, del_strings)
-      @f.close
+      @io.close
       FileUtils.rm(@flac_path)
       # mv not working between different hard drives.
       FileUtils.cp(temp_path, @flac_path)
       FileUtils.rm(temp_path)
-      # File.rename(temp_path, @flac_path)
-      @f = File.open(@flac_path, "rb")
+      @io = File.open(@flac_path, "rb")
     end
   end
 end

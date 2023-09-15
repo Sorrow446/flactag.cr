@@ -46,6 +46,11 @@ module FLACTag
     PublisherLogotype
   end
 
+  enum ITUNESADVISORY : UInt32
+    Explicit = 1
+    Clean
+  end
+
   class FLACPicture
     property colours_num : Int32 = 0
     property depth : Int32 = 0
@@ -62,9 +67,9 @@ module FLACTag
     property album : String = ""
     property album_artist : String = ""
     property artist : String = ""
-    property bpm : Int32?
+    property bpm : Int32 = 0
     property comment : String = ""
-    property compilation : Int32?
+    property compilation : Bool?
     property copyright : String = ""
     property custom : Hash(String, String)
     property date : String = ""
@@ -74,7 +79,7 @@ module FLACTag
     property length : Int32 = 0
     property genre : String = ""
     property isrc : String = ""
-    property itunes_advisory : Int32?
+    property itunes_advisory : ITUNESADVISORY?
     property lyrics : String = ""
     property performer : String = ""
     property publisher : String = ""
@@ -90,11 +95,6 @@ module FLACTag
       @pictures = Array(FLACPicture).new
     end
 
-    private def contains_only_nums(str : String) : Bool
-      # ('0'..'9').to_a.any? { |c| c.in?(str) }
-      ('0'..'9').to_a.any? &.in?(str)
-    end
-
     def update(var_name : String, value : _) : Nil
       var_name = var_name.gsub("_", "")
       case var_name
@@ -107,7 +107,7 @@ module FLACTag
       when "artist"
         @artist = value.to_s
       when "date", "year"
-        if contains_only_nums(value.to_s)
+        if value.to_s.each_char.all? &.number?
           @year = value.to_i32
         else
           @date = value.to_s
@@ -129,13 +129,14 @@ module FLACTag
       when "copyright"
         @copyright = value.to_s
       when "genre"
-        @genre = value.to_s   
+        @genre = value.to_s
       when "itunesadvisory"
-        @itunes_advisory = value.to_i32
+        advisory = ITUNESADVISORY.new(value.to_u32)
+        @itunes_advisory = advisory if ITUNESADVISORY.valid?(advisory)
       when "length"
         @length = value.to_i      
        when "compilation"
-        @compilation = value.to_i32
+        @compilation = value.to_i32 == 1
       when "vendor"
         @vendor = value.to_s
       when "tracknumber", "track"
