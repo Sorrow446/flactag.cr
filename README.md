@@ -96,6 +96,7 @@ puts("#{si.bit_depth}-bit / #{si.sample_rate} Hz")
 album
 album_artist
 all_pictures
+all_custom
 all_tags
 artist
 comment
