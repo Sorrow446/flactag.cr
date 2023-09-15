@@ -140,32 +140,32 @@ class FLACPicture
 end
 
 class FLACTags
-    property pictures : Array(FLACPicture)
-    property album : String = ""
-    property album_artist : String = ""
-    property artist : String = ""
-    property bpm : Int32 = 0
-    property comment : String = ""
-    property compilation : Bool?
-    property copyright : String = ""
-    property custom : Hash(String, String)
-    property date : String = ""
-    property disc_number : Int32 = 0
-    property disc_total : Int32 = 0
-    property encoder : String = ""
-    property length : Int32 = 0
-    property genre : String = ""
-    property isrc : String = ""
-    property itunes_advisory : ITUNESADVISORY?
-    property lyrics : String = ""
-    property performer : String = ""
-    property publisher : String = ""
-    property title : String = ""
-    property track_number : Int32 = 0
-    property track_total : Int32 = 0
-    property upc : String = ""
-    property vendor : String = ""
-    property year : Int32 = 0
+  property pictures : Array(FLACPicture)
+  property album : String = ""
+  property album_artist : String = ""
+  property artist : String = ""
+  property bpm : Int32 = 0
+  property comment : String = ""
+  property compilation : Bool?
+  property copyright : String = ""
+  property custom : Hash(String, String)
+  property date : String = ""
+  property disc_number : Int32 = 0
+  property disc_total : Int32 = 0
+  property encoder : String = ""
+  property length : Int32 = 0
+  property genre : String = ""
+  property isrc : String = ""
+  property itunes_advisory : ITUNESADVISORY?
+  property lyrics : String = ""
+  property performer : String = ""
+  property publisher : String = ""
+  property title : String = ""
+  property track_number : Int32 = 0
+  property track_total : Int32 = 0
+  property upc : String = ""
+  property vendor : String = ""
+  property year : Int32 = 0
 end
 
 class FLACStreamInfo
